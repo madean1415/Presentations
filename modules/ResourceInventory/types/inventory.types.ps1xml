@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Types>
+    <Type>
+        <Name>System.Object</Name>
+        <Members>
+            <ScriptMethod>
+                <Name>NewHashID</Name>
+                <Script>
+                    $paramStream = [System.IO.MemoryStream]::new();
+                    $streamWriter = [System.IO.StreamWriter]::new($paramStream);
+                    $streamWriter.Write($args[0]);
+                    $streamWriter.Flush();
+                    $paramStream.Position = 0;
+                    Get-FileHash -InputStream $paramStream -Algorithm MD5 | Select-Object -ExpandProperty Hash;
+                </Script>
+            </ScriptMethod>
+        </Members>
+    </Type>
+</Types>
