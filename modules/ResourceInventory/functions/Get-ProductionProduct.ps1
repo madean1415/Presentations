@@ -2,15 +2,15 @@ function  Get-ProductionProduct
 {
     <#
     .Synopsis
-       Query the Production.Product table in the AdventureWorks2014 database.
+        Query the Production.Product table in the AdventureWorks2014 database.
     .DESCRIPTION
-       Query the Production.Product table in the AdventureWorks2014 database.
+        Query the Production.Product table in the AdventureWorks2014 database.
     .EXAMPLE
-       Get-ProductionProduct;
+        Get-ProductionProduct;
     .OUTPUTS
-       DataTable (as SQL TVP)
+        DataTable (as SQL TVP)
     .COMPONENT
-       ResourceInventory module
+        ResourceInventory module
     #>
     [CmdletBinding()]
     Param()
@@ -35,39 +35,49 @@ function  Get-ProductionProduct
                 [void]$production.Columns.Add('Style',[string]);
                 [void]$production.Columns.Add('HashID',[string]);
 
-            function AddItem([Product]$item)
+            function Add-Item([Product]$product)
             {
-                $row = $production.NewRow();
-                    $row.Color = $item.Color;
-                    $row.CriticalItems = $item.CriticalItems;
-                    $row.CriticalItemsCount = $item.CriticalItemsCount;
-                    $row.CriticalItemsLength = $item.CriticalItemsLength;
-                    $row.DaysToManufacture = $item.DaysToManufacture;
-                    $row.ListPrice = $item.ListPrice;
-                    $row.Name = $item.Name;
-                    $row.ProductID = $item.ProductID;
-                    $row.ProductNumber = $item.ProductNumber;
-                    $row.ReorderPoint = $item.ReorderPoint;
-                    $row.SellEndDate = $item.SellEndDate;
-                    $row.SellStartDate = $item.SellStartDate;
-                    $row.Style = $row.Style;
-                    $row.HashID = $item.HashID;
-                $production.Rows.Add($row);
+                process
+                {
+                    $row = $production.NewRow();
+                        $row.Color = $product.Color;
+                        $row.CriticalItems = $product.CriticalItems;
+                        $row.CriticalItemsCount = $product.CriticalItemsCount;
+                        $row.CriticalItemsLength = $product.CriticalItemsLength;
+                        $row.DaysToManufacture = $product.DaysToManufacture;
+                        $row.ListPrice = $product.ListPrice;
+                        $row.Name = $product.Name;
+                        $row.ProductID = $product.ProductID;
+                        $row.ProductNumber = $product.ProductNumber;
+                        $row.ReorderPoint = $product.ReorderPoint;
+                        $row.SellEndDate = $product.SellEndDate;
+                        $row.SellStartDate = $product.SellStartDate;
+                        $row.Style = $product.Style;
+                        $row.HashID = $product.HashID;
+                    $production.Rows.Add($row);
+                }
             }
 
-            $matchStuff = {param($x) $x -match "(Black|BK|\bGrip Tape\b|adjust|(?<!Front\s)Derailleur)"}
+            $matchStuff = {param($x) process{ $x -match "(Black|BK|\bGrip Tape\b|adjust|(?<!Front\s)Derailleur)"} }
 
-            function GetMyStuff
+            function Get-MyStuff
             {
                 [CmdletBinding()]
                 Param(
                 [Scriptblock] $Expression,
                 [Array] $item
                 )
-
-                $results = [List [string]]::new()
-                &$Expression $item | ForEach-Object{[void]$results.Add($_)}
-                $results;
+                process
+                {
+                    $results = [List [string]]::new()
+                    &$Expression $item |&{
+                        process
+                        {
+                            [void]$results.Add($_)
+                            $results;
+                        }
+                    }
+                }
             }
 
             [Server]$sourceServer = "MyServer";
@@ -80,7 +90,7 @@ function  Get-ProductionProduct
                 $results = [Product]::new();
 
                 $props = @($i.Color,$i.Name,$i.ProductNumber);
-                $lamba = GetMyStuff -Expression $matchStuff -item $props -ErrorVariable +err -ErrorAction SilentlyContinue;
+                $lamba = Get-MyStuff -Expression $matchStuff -item $props -ErrorVariable +err -ErrorAction SilentlyContinue;
 
                 $x = [Dictionary[string,string]]::new();
                 $x["SellEndDate"] = $i.SellEndDate;
@@ -115,21 +125,12 @@ function  Get-ProductionProduct
                 $results.SellStartDate = $times[1];
                 $results.Style = $i.Style;
                 $results.HashID = $results.NewHashID($hashValue-join"");
-                AddItem($results);
+                Add-Item($results);
             }
 
             if($production.Rows.Count -gt 0)
             {
-                [Server]$targetServer = "MyServer";
-                [Database]$targetDatabase = $targetServer.Databases.Item("MyDatabase");
-
-                $targetConnection = [SQLConnection]::new("Server=$($targetServer.Name); Database=$($targetDatabase.Name); Integrated Security=true");
-                $targetConnection.Open();
-                    $manageTargetTable = [SqlCommand]::new("Production.ManageProduct",$targetConnection);
-                    $manageTargetTable.CommandType = [CommandType]::StoredProcedure;
-                    $manageTargetTable.Parameters.Add([SqlParameter]::new("@dt",[SQLDbType].Structured)).Value = $production;
-                    [void]$manageTargetTable.ExecuteNonQuery();
-                $targetConnection.Close();
+                Update-SQLTable("MyServer","MyDatabase",$production)
             }
         }
         catch
