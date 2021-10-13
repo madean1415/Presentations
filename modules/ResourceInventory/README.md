@@ -11,7 +11,7 @@ This module and manifest were created for a [Research Triangle PowerShell Users 
 
 ## Scripting & performance considerations
 
-Scripting, items, or actions may exist to demonstrate use cases during the demonstration. For example, the `Product` class references the `SystemDateTime` _enumerator_. The enumerator and a class method are provided to show how datetime elements with differing base types—like those found in Active Directory objects—can be transformed to meet destination standards. Lastly, **try/catch exception handling** is not as robust as it would be in production code.
+Scripting, items, or actions may exist to demonstrate use cases during the demonstration. For example, the `Product` class references the `SystemDateTime` _enumerator_ class. The enumerator and a class method are provided to show how datetime elements with differing base types—like those found in Active Directory objects—can be transformed to meet destination standards. Lastly, **try/catch exception handling** is not as robust as it would be in production code.
 
 ### The October 2021 demonstration
 

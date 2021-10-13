@@ -60,26 +60,6 @@ function  Get-ProductionProduct
 
             $matchStuff = {param($x) process{ $x -match "(Black|BK|\bGrip Tape\b|adjust|(?<!Front\s)Derailleur)"} }
 
-            function Get-MyStuff
-            {
-                [CmdletBinding()]
-                Param(
-                [Scriptblock] $Expression,
-                [Array] $item
-                )
-                process
-                {
-                    $results = [List [string]]::new()
-                    &$Expression $item |&{
-                        process
-                        {
-                            [void]$results.Add($_)
-                            $results;
-                        }
-                    }
-                }
-            }
-
             [Server]$sourceServer = "MyServer";
             [Database]$sourceDatabase = $sourceServer.Databases.Item('AdventureWorks2014');
             $sourceQuery = Get-Content ".\Query-Production.Product.sql";
