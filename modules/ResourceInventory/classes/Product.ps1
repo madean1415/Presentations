@@ -1,3 +1,5 @@
+using namespace System.Collections.Generic;
+
 Class Product
 {
     [string] $Color;
@@ -26,4 +28,32 @@ Class Product
         }
         return $convert;
     }
+
+    [array] SetMatchedTerms($expression,$item)
+    {
+        $results = [List [string]]::new()
+        &$expression $item |&{
+            process
+            {
+                [void]$results.Add($_)
+            }
+        }
+        return $results;
+    }
+}
+
+Enum SystemDateType
+{
+    SellEndDate = 0;
+    SellStartDate = 1;
+    AccountLockoutTime = 2;
+    Created = 3;
+    LastBadPasswordAttempt = 4;
+    LastLogonDate = 5;
+    Modified = 6;
+    PasswordLastSet = 7;
+    BadPasswordTime = 16;
+    LastLogoff = 17;
+    LastSuccessfulInteractiveLogonTime = 18;
+    LockOutTime = 19;
 }

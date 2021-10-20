@@ -1,19 +1,53 @@
-function  Get-ProductionProduct
+using namespace System.Collections;
+using namespace System.Collections.Generic;
+using namespace System.Data;
+
+Function  Get-ProductionProduct
 {
     <#
-    .Synopsis
-        Query the Production.Product table in the AdventureWorks2014 database.
-    .DESCRIPTION
-        Query the Production.Product table in the AdventureWorks2014 database.
-    .EXAMPLE
-        Get-ProductionProduct;
-    .OUTPUTS
-        DataTable (as SQL TVP)
-    .COMPONENT
-        ResourceInventory module
+        .Synopsis
+            Query the source AdventureWorks2014 Production.Product table and 
+            store the results in a separate table.
+        .DESCRIPTION
+            Get data from the AdventureWorks2014 Production.Product table, and 
+            combine with keyword match criteria. Results are stored in a 
+            destination Production.Product SQL data table.
+        .EXAMPLE
+            Get-ProductionProduct -Expression "(Black|BK|\bGrip Tape\b|adjust|(?<!Front\s)Derailleur)"
+        .INPUTS
+            System.String
+        .OUTPUTS
+            System.Object
+        .COMPONENT
+            ResourceInventory module
+        .NOTES
+            creator: Mark Dean
+            created: 2021-09-18
+            description: "Query the source AdventureWorks2014 Production.Product table and store the results in a separate table."
+            example: 
+                - 'Get-ProductionProduct -Expression "(Black|BK|\bGrip Tape\b|adjust|(?<!Front\s)Derailleur)"'
+            version: v1.0
+            class: CommandLineTool
+            baseCommand: SQL query
+            inputs:
+                example_flag:
+                    type: string
+                    inputBinding:
+                        position: 0
+                        prefix: -regex
     #>
     [CmdletBinding()]
-    Param()
+        Param
+        (
+            [Parameter(Mandatory=$true,
+                       ValueFromPipeline=$true,
+                       ValueFromPipelineByPropertyName=$true,
+                       Position=1,
+                       HelpMessage="Enter a string value to be interpreted as a regular expression.")]
+            [ValidateNotNull()]
+            [ValidateNotNullOrEmpty()]
+            [string]$Expression
+        )
     Process
     {
         $fxnExceptionLog = "C:\Program Files\WindowsPowerShell\Modules\ResourceInventory\errors\Get-ProductionProduct\$((Get-Date).ToString("s").Replace(':','_')).log";
@@ -35,7 +69,7 @@ function  Get-ProductionProduct
                 [void]$production.Columns.Add('Style',[string]);
                 [void]$production.Columns.Add('HashID',[string]);
 
-            function Add-Item([Product]$product)
+            function Add-Product([Product]$product)
             {
                 process
                 {
@@ -58,38 +92,33 @@ function  Get-ProductionProduct
                 }
             }
 
-            $matchStuff = {param($x) process{ $x -match "(Black|BK|\bGrip Tape\b|adjust|(?<!Front\s)Derailleur)"} }
-
-            [Server]$sourceServer = "MyServer";
-            [Database]$sourceDatabase = $sourceServer.Databases.Item('AdventureWorks2014');
-            $sourceQuery = Get-Content ".\Query-Production.Product.sql";
-            $sourceSet = $sourceDatabase.ExecuteWithResults("$sourceQuery");
+            $sourceSet = Get-SourceSQLData "MyServer" "AdventureWorks2019" "C:\Program Files\WindowsPowerShell\Modules\ResourceInventory\scripts\sql\queries\Query-Production.Product.sql";
 
             foreach($i in $sourceSet.Tables[0])
             {
                 $results = [Product]::new();
+                $properties = @($i.Color,$i.Name,$i.ProductNumber);
+                $matchTerms = {param($x) process{ $x -match "$($Expression)"} }
+                $lamba = $results.SetMatchedTerms($matchTerms,$properties);
 
-                $props = @($i.Color,$i.Name,$i.ProductNumber);
-                $lamba = Get-MyStuff -Expression $matchStuff -item $props -ErrorVariable +err -ErrorAction SilentlyContinue;
+                $dates = [Dictionary[string,string]]::new();
+                $dates["SellEndDate"] = $i.SellEndDate;
+                $dates["SellStartDate"] = $i.SellStartDate;
 
-                $x = [Dictionary[string,string]]::new();
-                $x["SellEndDate"] = $i.SellEndDate;
-                $x["SellStartDate"] = $i.SellStartDate;
-
-                $times = [ArrayList]::new();
-                foreach($k in $x.Keys)
+                $dateCollection = [ArrayList]::new();
+                foreach($key in $dates.Keys)
                 {
-                    if($x[$k])
+                    if($dates[$key])
                     {
-                        [void]$times.Add($results.ConvertToSQLDateTime($x[$k],$k));
+                        [void]$dateCollection.Add($results.ConvertToSQLDateTime($dates[$key],$key));
                     }
                     else
                     {
-                        [void]$times.Add($results.ConvertToSQLDateTime(0,$k));
+                        [void]$dateCollection.Add($results.ConvertToSQLDateTime(0,$key));
                     }
                 }
 
-                $hashValue = @($i.Color,$i.DaysToManufacture,$i.ListPrice,$i.Name,$i.ProductID,$i.ProductNumber,$i.ReorderPoint,$times[0],$times[1],$i.Style);
+                $hashValue = @($i.Color,$lamba,$i.DaysToManufacture,$i.ListPrice,$i.Name,$i.ProductID,$i.ProductNumber,$i.ReorderPoint,$dateCollection[0],$dateCollection[1],$i.Style);
 
                 $results.Color = $i.Color;
                 $results.CriticalItems = $lamba -join "^";
@@ -101,21 +130,23 @@ function  Get-ProductionProduct
                 $results.ProductID = $i.ProductID;
                 $results.ProductNumber = $i.ProductNumber;
                 $results.ReorderPoint = $i.ReorderPoint;
-                $results.SellEndDate = $times[0];
-                $results.SellStartDate = $times[1];
+                $results.SellEndDate = $dateCollection[0];
+                $results.SellStartDate = $dateCollection[1];
                 $results.Style = $i.Style;
                 $results.HashID = $results.NewHashID($hashValue-join"");
-                Add-Item($results);
+
+                Add-Product($results);
             }
 
             if($production.Rows.Count -gt 0)
             {
-                Update-SQLTable("MyServer","MyDatabase",$production)
+                Update-SQLTable "MyServer" "MyDatabase" "Production.ManageProduct" $production;
             }
         }
         catch
         {
             $PSItem *>> $fxnExceptionLog;
+            Write-Output ("Error`r`nSee {0} file." -f $fxnExceptionLog);
         }
     }
 }

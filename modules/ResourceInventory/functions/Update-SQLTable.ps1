@@ -1,4 +1,8 @@
-﻿function Update-SQLTable
+﻿using namespace Microsoft.SqlServer.Management.Smo;
+using namespace System.Data;
+using namespace System.Data.SqlClient;
+
+function Update-SQLTable
 {
     <#
     .NOTES
@@ -8,38 +12,50 @@
     [CmdletBinding()]
     Param
     (
-        # Param1 help description
         [Parameter(Mandatory=$true,
                 ValueFromPipelineByPropertyName=$true,
                 Position=0)]
         [ValidateNotNull()]
         [ValidateNotNullOrEmpty()]
-        $serverName,
+        [string] $ServerName,
 
         [Parameter(Mandatory=$true,
                 ValueFromPipelineByPropertyName=$true,
                 Position=1)]
         [ValidateNotNull()]
         [ValidateNotNullOrEmpty()]
-        $databaseName,
+        [string] $DatabaseName,
+
+        [Parameter(Mandatory=$true,
+                ValueFromPipelineByPropertyName=$true,
+                HelpMessage="SchemaName.ProcedureName",
+                Position=2)]
+        [ValidateNotNull()]
+        [ValidateNotNullOrEmpty()]
+        [ValidatePattern("^\w+\.\w+$")]
+        [string] $StoredProcedure,
 
         [Parameter(Mandatory=$true,
             HelpMessage="Object must reference a DataTable object.",
-            Position=2)]
+            Position=3)]
         [ValidateNotNull()]
         [ValidateNotNullOrEmpty()]
-        [System.Data.DataTable]$object
+        [System.Data.DataTable] $Object
     )
-    process
+    Begin
     {
-        [Server]$targetServer = "$($serverName)";
-        [Database]$targetDatabase = $targetServer.Databases.Item("$($databaseName)");
+        [void][reflection.assembly]::LoadWithPartialName("Microsoft.SqlServer.Smo");
+    }
+    Process
+    {
+        [Server]$server = $ServerName;
+        [Database]$database = $server.Databases.Item($DatabaseName);
 
-        $targetConnection = [SQLConnection]::new("Server=$($targetServer.Name); Database=$($targetDatabase.Name); Integrated Security=true");
+        $targetConnection = [SQLConnection]::new("Server=$($server.Name); Database=$($database.Name); Integrated Security=true");
             $targetConnection.Open();
-                $manageTargetTable = [SqlCommand]::new("Production.ManageProduct",$targetConnection);
+                $manageTargetTable = [SqlCommand]::new("$($StoredProcedure)",$targetConnection);
                 $manageTargetTable.CommandType = [CommandType]::StoredProcedure;
-                $manageTargetTable.Parameters.Add([SqlParameter]::new("@dt",[SQLDbType].Structured)).Value = $object;
+                $manageTargetTable.Parameters.Add([SqlParameter]::new("@dt",[SQLDbType].Structured)).Value = $Object;
                 [void]$manageTargetTable.ExecuteNonQuery();
             $targetConnection.Close();
     }

@@ -42,5 +42,3 @@ GO
 
 EXEC sys.sp_addextendedproperty @name=N'Description', @value=N'Manages the data content of the Production.Product table with source data passed in using the TVP Production.DT_Product.' , @level0type=N'SCHEMA',@level0name=N'Production', @level1type=N'PROCEDURE',@level1name=N'ManageProduct'
 GO
-
-

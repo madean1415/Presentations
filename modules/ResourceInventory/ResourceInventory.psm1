@@ -7,12 +7,7 @@ using namespace Microsoft.SqlServer.Management.Smo;
 
 [void][reflection.assembly]::LoadWithPartialName("Microsoft.SqlServer.Smo");
 
-# Use the full file path in these Get-ChildItem statements.
-
-Get-ChildItem -Path ".\Modules\ResourceInventory\functions" | ForEach-Object -Process {
-    . $PSItem.FullName
+Get-ChildItem -Path "C:\Program Files\WindowsPowerShell\Modules\ResourceInventory\functions" | ForEach-Object -Process {
+    . $PSItem.FullName;
 }
-
-Get-ChildItem -Path ".\Modules\ResourceInventory\classes" | ForEach-Object -Process {
-    . $PSItem.FullName
-}
+Get-ChildItem -Path "C:\Program Files\WindowsPowerShell\Modules\ResourceInventory\classes"|Select-Object -ExpandProperty FullName|&{process{. $PSItem;}}
