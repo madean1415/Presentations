@@ -96,43 +96,17 @@ Function  Get-ProductionProduct
 
             foreach($i in $sourceSet.Tables[0])
             {
-                $results = [Product]::new();
-                $properties = @($i.Color,$i.Name,$i.ProductNumber);
-                $matchTerms = {param($x) process{ $x -match "$($Expression)"} }
-                $lamba = $results.SetMatchedTerms($matchTerms,$properties);
+                $results = [Product]::new($i,$Expression);
 
                 $dates = [Dictionary[string,string]]::new();
                 $dates["SellEndDate"] = $i.SellEndDate;
                 $dates["SellStartDate"] = $i.SellStartDate;
 
-                $dateCollection = [ArrayList]::new();
-                foreach($key in $dates.Keys)
-                {
-                    if($dates[$key])
-                    {
-                        [void]$dateCollection.Add($results.ConvertToSQLDateTime($dates[$key],$key));
-                    }
-                    else
-                    {
-                        [void]$dateCollection.Add($results.ConvertToSQLDateTime(0,$key));
-                    }
-                }
+                $dateCollection = $results.GetProductDates($dates);
 
-                $hashValue = @($i.Color,$lamba,$i.DaysToManufacture,$i.ListPrice,$i.Name,$i.ProductID,$i.ProductNumber,$i.ReorderPoint,$dateCollection[0],$dateCollection[1],$i.Style);
-
-                $results.Color = $i.Color;
-                $results.CriticalItems = $lamba -join "^";
-                $results.CriticalItemsCount = $lamba.Count;
-                $results.CriticalItemsLength = $lamba.Length;
-                $results.DaysToManufacture = $i.DaysToManufacture;
-                $results.ListPrice = [decimal]::Round($i.ListPrice,2);
-                $results.Name = $i.Name;
-                $results.ProductID = $i.ProductID;
-                $results.ProductNumber = $i.ProductNumber;
-                $results.ReorderPoint = $i.ReorderPoint;
                 $results.SellEndDate = $dateCollection[0];
                 $results.SellStartDate = $dateCollection[1];
-                $results.Style = $i.Style;
+                $hashValue = @($i.Color,$lamba.Count;,$i.DaysToManufacture,$i.ListPrice,$i.Name,$i.ProductID,$i.ProductNumber,$i.ReorderPoint,$dateCollection[0],$dateCollection[1],$i.Style);
                 $results.HashID = $results.NewHashID($hashValue-join"");
 
                 Add-Product($results);
